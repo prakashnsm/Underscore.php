@@ -362,7 +362,7 @@ class __ {
     
     $calculated = array();
     foreach($collection as $item) {
-      $val = (!is_null($iterator)) ? $iterator($item) : $item;
+      $val = (!is_null($iterator) && is_callable($iterator)) ? $iterator($item) : $item;
       if(is_bool(array_search($val, $calculated, true))) {
         $calculated[] = $val;
         $return[] = $item;
@@ -492,7 +492,7 @@ class __ {
   public function max($collection=null, $iterator=null) {
     list($collection, $iterator) = self::_wrapArgs(func_get_args(), 2);
     
-    if(is_null($iterator)) return self::_wrap(max($collection));
+    if(is_null($iterator) || !is_callable($iterator)) return self::_wrap(max($collection));
     
     $results = array();
     foreach($collection as $k=>$item) {
@@ -509,7 +509,7 @@ class __ {
   public function min($collection=null, $iterator=null) {
     list($collection, $iterator) = self::_wrapArgs(func_get_args(), 2);
     
-    if(is_null($iterator)) return self::_wrap(min($collection));
+    if(is_null($iterator)|| !is_callable($iterator)) return self::_wrap(min($collection));
     
     $results = array();
     foreach($collection as $k=>$item) {
@@ -525,10 +525,9 @@ class __ {
   // Sort the collection by return values from the iterator
   public function sortBy($collection=null, $iterator=null) {
     list($collection, $iterator) = self::_wrapArgs(func_get_args(), 2);
-    
     $results = array();
     foreach($collection as $k=>$item) {
-      $results[$k] = $iterator($item);
+      $results[$k] = is_callable($iterator) ? $iterator($item) : $item;
     }
     asort($results);
     foreach($results as $k=>$v) {
@@ -560,7 +559,7 @@ class __ {
     $collection = (array) self::_collection($collection);
     $__ = new self;
     
-    $calculated_value = (!is_null($iterator)) ? $iterator($value) : $value;
+    $calculated_value = (!is_null($iterator) && is_callable($iterator)) ? $iterator($value) : $value;
     
     while(count($collection) > 1) {
       $midpoint = floor(count($collection) / 2);
@@ -664,9 +663,13 @@ class __ {
     list($object) = self::_wrapArgs(func_get_args(), 1);
     
     $clone = null;
-    if(is_array($object)) $clone = (array) clone (object) $object;
-    elseif(!is_object($object)) $clone = $object;
-    elseif(!$clone) $clone = clone $object;
+      if (is_array($object)) {
+          $clone = (array)clone ((object) $object);
+      } elseif (!is_object($object)) {
+          $clone = $object;
+      } elseif (!$clone) {
+          $clone = clone $object;
+      }
     
     // shallow copy object
     if(is_object($clone) && count($clone) > 0) {
@@ -688,8 +691,10 @@ class __ {
   // Invokes the interceptor on the object, then returns the object
   public function tap($object=null, $interceptor=null) {
     list($object, $interceptor) = self::_wrapArgs(func_get_args(), 2);
-    
-    $interceptor($object);
+    if(is_callable($interceptor)){
+        $interceptor($object);
+    }
+
     return self::_wrap($object);
   }
   
@@ -828,7 +833,7 @@ class __ {
   // Invokes the iterator n times
   public function times($n=null, $iterator=null) {
     list($n, $iterator) = self::_wrapArgs(func_get_args(), 2);
-    if(is_null($n)) $n = 0;
+    if(is_null($n) || !is_callable($iterator)) $n = 0;
     
     for($i=0; $i<$n; $i++) $iterator($i);
     return self::_wrap(null);
@@ -942,7 +947,7 @@ class __ {
     });
     
     // Return function or call function depending on context
-    return self::_wrap(((isset($this) && isset($this->_wrapped) && $this->_wrapped) || !is_null($context)) ? $return($context) : $return);
+    return self::_wrap(((isset($this) && isset($this->_wrapped) && $this->_wrapped) || (!is_null($context) && is_callable($return))) ? $return($context) : $return);
   }
   
   // Escape
